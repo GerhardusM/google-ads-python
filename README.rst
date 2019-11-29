@@ -1,7 +1,7 @@
 Google Ads API Client Library for Python
 ========================================
 
-[![An old rock in the desert](/shipwreck.jpg "Shiprock, New Mexico by Beau Rogers")]
+[![An old rock in the desert](/Shipwreck.jpg "Shiprock, New Mexico by Beau Rogers")]
 
 This project hosts the Python client library for the Google Ads API.
 
