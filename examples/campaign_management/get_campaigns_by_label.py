@@ -17,19 +17,18 @@
 To add campaigns, run add_campaigns.py.
 """
 
-from __future__ import absolute_import
 
 import argparse
-import six
 import sys
 
-from google.ads.google_ads.client import GoogleAdsClient
-from google.ads.google_ads.errors import GoogleAdsException
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
 
 
 _DEFAULT_PAGE_SIZE = 1000
 
 
+# [START get_campaigns_by_label]
 def main(client, customer_id, label_id, page_size):
     """Demonstrates how to retrieve all campaigns by a given label ID.
 
@@ -40,68 +39,80 @@ def main(client, customer_id, label_id, page_size):
         page_size: An int of the number of results to include in each page of
             results.
     """
-    ga_service = client.get_service('GoogleAdsService', version='v2')
+    ga_service = client.get_service("GoogleAdsService")
 
     # Creates a query that will retrieve all campaign labels with the
     # specified label ID.
-    query = '''
-            SELECT
-                campaign.id,
-                campaign.name,
-                label.id,
-                label.name
-             FROM campaign_label
-             WHERE label.id = "{}"
-             ORDER BY campaign.id
-             '''.format(label_id)
+    query = f"""
+        SELECT
+            campaign.id,
+            campaign.name,
+            label.id,
+            label.name
+         FROM campaign_label
+         WHERE label.id = "{label_id}"
+         ORDER BY campaign.id"""
 
     # Retrieves a google.api_core.page_iterator.GRPCIterator instance
     # initialized with the specified request parameters.
-    iterator = ga_service.search(customer_id, query=query, page_size=page_size)
+    request = client.get_type("SearchGoogleAdsRequest")
+    request.customer_id = customer_id
+    request.query = query
+    request.page_size = page_size
 
-    try:
-        # Iterates over all rows in all pages and prints the requested field
-        # values for the campaigns and labels in each row. The results include
-        # the campaign and label objects because these were included in the
-        # search criteria.
-        for row in iterator:
-            print('Campaign found with name "{}", ID "{}", and '
-                  'label "{}".'.format(row.campaign.id.value,
-                                       row.campaign.name.value,
-                                       row.label.name.value))
-    except GoogleAdsException as ex:
-        print_error_and_exit_process(ex)
+    iterator = ga_service.search(request=request)
 
-
-def print_error_and_exit_process(error):
-    """Prints the details of a GoogleAdsException and exits the current process.
-
-    Args:
-        error: An instance of a GoogleAdsException.
-    """
-    print('Request with ID "{}" failed with status "{}" and includes the '
-          'following errors:'.format(error.request_id, error.error.code().name))
-    for error in error.failure.errors:
-        print('\tError with message "{}".'.format(error.message))
-        if error.location:
-            for field_path_element in error.location.field_path_elements:
-                print('\t\tOn field: {}'.format(
-                    field_path_element.field_name))
-    sys.exit(1)
+    # Iterates over all rows in all pages and prints the requested field
+    # values for the campaigns and labels in each row. The results include
+    # the campaign and label objects because these were included in the
+    # search criteria.
+    for row in iterator:
+        print(
+            f'Campaign found with ID "{row.campaign.id}", name '
+            f'"{row.campaign.name}", and label "{row.label.name}".'
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # GoogleAdsClient will read the google-ads.yaml configuration file in the
     # home directory if none is specified.
-    google_ads_client = GoogleAdsClient.load_from_storage()
+    googleads_client = GoogleAdsClient.load_from_storage(version="v10")
 
     parser = argparse.ArgumentParser(
-        description='Lists all campaigns for specified customer.')
+        description="Lists all campaigns for specified customer."
+    )
     # The following argument(s) should be provided to run the example.
-    parser.add_argument('-c', '--customer_id', type=six.text_type,
-                        required=True, help='The Google Ads customer ID.')
-    parser.add_argument('-l', '--label_id', type=six.text_type, required=True,
-                        help='A label ID associated with a campaign.')
+    parser.add_argument(
+        "-c",
+        "--customer_id",
+        type=str,
+        required=True,
+        help="The Google Ads customer ID.",
+    )
+    parser.add_argument(
+        "-l",
+        "--label_id",
+        type=str,
+        required=True,
+        help="A label ID associated with a campaign.",
+    )
     args = parser.parse_args()
 
-    main(google_ads_client, args.customer_id, args.label_id, _DEFAULT_PAGE_SIZE)
+    try:
+        main(
+            googleads_client,
+            args.customer_id,
+            args.label_id,
+            _DEFAULT_PAGE_SIZE,
+        )
+    except GoogleAdsException as ex:
+        print(
+            f'Request with ID "{ex.request_id}" failed with status '
+            f'"{ex.error.code().name}" and includes the following errors:'
+        )
+        for error in ex.failure.errors:
+            print(f'\tError with message "{error.message}".')
+            if error.location:
+                for field_path_element in error.location.field_path_elements:
+                    print(f"\t\tOn field: {field_path_element.field_name}")
+        sys.exit(1)

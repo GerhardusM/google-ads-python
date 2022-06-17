@@ -14,60 +14,87 @@
 # limitations under the License.
 """This example illustrates how to retrieve ad groups."""
 
-from __future__ import absolute_import
 
 import argparse
-import six
 import sys
-import google.ads.google_ads.client
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
 
 
 _DEFAULT_PAGE_SIZE = 1000
 
 
 def main(client, customer_id, page_size, campaign_id=None):
-    ga_service = client.get_service('GoogleAdsService', version='v2')
+    ga_service = client.get_service("GoogleAdsService")
 
-    query = 'SELECT campaign.id, ad_group.id, ad_group.name FROM ad_group'
+    query = """
+        SELECT
+          campaign.id,
+          ad_group.id,
+          ad_group.name
+        FROM ad_group"""
 
     if campaign_id:
-        query = '%s WHERE campaign.id = %s' % (query, campaign_id)
+        query += f" WHERE campaign.id = {campaign_id}"
 
-    results = ga_service.search(customer_id, query=query, page_size=page_size)
+    search_request = client.get_type("SearchGoogleAdsRequest")
+    search_request.customer_id = customer_id
+    search_request.query = query
+    search_request.page_size = _DEFAULT_PAGE_SIZE
 
-    try:
-        for row in results:
-            print('Ad group with ID %d and name "%s" was found in campaign '
-                  'with ID %d.'
-                  % (row.ad_group.id.value, row.ad_group.name.value,
-                     row.campaign.id.value))
-    except google.ads.google_ads.errors.GoogleAdsException as ex:
-        print('Request with ID "%s" failed with status "%s" and includes the '
-              'following errors:' % (ex.request_id, ex.error.code().name))
-        for error in ex.failure.errors:
-            print('\tError with message "%s".' % error.message)
-            if error.location:
-                for field_path_element in error.location.field_path_elements:
-                    print('\t\tOn field: %s' % field_path_element.field_name)
-        sys.exit(1)
+    results = ga_service.search(request=search_request)
+
+    for row in results:
+        print(
+            f"Ad group with ID {row.ad_group.id} and name "
+            f'"{row.ad_group.name}" was found in campaign with '
+            f"ID {row.campaign.id}."
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # GoogleAdsClient will read the google-ads.yaml configuration file in the
     # home directory if none is specified.
-    google_ads_client = (google.ads.google_ads.client.GoogleAdsClient
-                         .load_from_storage())
+    googleads_client = GoogleAdsClient.load_from_storage(version="v10")
 
     parser = argparse.ArgumentParser(
-        description='List ad groups for specified customer.')
+        description="List ad groups for specified customer."
+    )
     # The following argument(s) should be provided to run the example.
-    parser.add_argument('-c', '--customer_id', type=six.text_type,
-                        required=True, help='The Google Ads customer ID.')
-    parser.add_argument('-i', '--campaign_id', type=six.text_type,
-                        required=False,
-                        help=('The campaign ID. Specify this to list ad groups '
-                              'solely for this campaign ID.'))
+    parser.add_argument(
+        "-c",
+        "--customer_id",
+        type=str,
+        required=True,
+        help="The Google Ads customer ID.",
+    )
+    parser.add_argument(
+        "-i",
+        "--campaign_id",
+        type=str,
+        required=False,
+        help=(
+            "The campaign ID. Specify this to list ad groups "
+            "solely for this campaign ID."
+        ),
+    )
     args = parser.parse_args()
 
-    main(google_ads_client, args.customer_id, _DEFAULT_PAGE_SIZE,
-         campaign_id=args.campaign_id)
+    try:
+        main(
+            googleads_client,
+            args.customer_id,
+            _DEFAULT_PAGE_SIZE,
+            campaign_id=args.campaign_id,
+        )
+    except GoogleAdsException as ex:
+        print(
+            f'Request with ID "{ex.request_id}" failed with status '
+            f'"{ex.error.code().name}" and includes the following errors:'
+        )
+        for error in ex.failure.errors:
+            print(f'\tError with message "{error.message}".')
+            if error.location:
+                for field_path_element in error.location.field_path_elements:
+                    print(f"\t\tOn field: {field_path_element.field_name}")
+        sys.exit(1)

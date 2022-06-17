@@ -14,80 +14,104 @@
 # limitations under the License.
 """This example demonstrates how to add a keyword to an ad group."""
 
-from __future__ import absolute_import
 
 import argparse
-import six
 import sys
 
-import google.ads.google_ads.client
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
 
 
-def main(client, customer_id, ad_group_id, keyword):
-    ad_group_service = client.get_service('AdGroupService', version='v2')
-    ad_group_criterion_service = client.get_service('AdGroupCriterionService',
-                                                    version='v2')
+def main(client, customer_id, ad_group_id, keyword_text):
+    ad_group_service = client.get_service("AdGroupService")
+    ad_group_criterion_service = client.get_service("AdGroupCriterionService")
 
     # Create keyword.
-    ad_group_criterion_operation = client.get_type('AdGroupCriterionOperation',
-                                                   version='v2')
+    ad_group_criterion_operation = client.get_type("AdGroupCriterionOperation")
     ad_group_criterion = ad_group_criterion_operation.create
-    ad_group_criterion.ad_group.value = ad_group_service.ad_group_path(
-        customer_id, ad_group_id)
-    ad_group_criterion.status = client.get_type(
-        'AdGroupCriterionStatusEnum').ENABLED
-    ad_group_criterion.keyword.text.value = keyword
-    ad_group_criterion.keyword.match_type = client.get_type(
-        'KeywordMatchTypeEnum').EXACT
+    ad_group_criterion.ad_group = ad_group_service.ad_group_path(
+        customer_id, ad_group_id
+    )
+    ad_group_criterion.status = client.enums.AdGroupCriterionStatusEnum.ENABLED
+    ad_group_criterion.keyword.text = keyword_text
+    ad_group_criterion.keyword.match_type = (
+        client.enums.KeywordMatchTypeEnum.EXACT
+    )
 
     # Optional field
     # All fields can be referenced from the protos directly.
-    # The protos are located in subdirectories under
-    # google/ads/googleads/v0/proto.
-    # ad_group_criterion.negative.value = True
+    # The protos are located in subdirectories under:
+    # https://github.com/googleapis/googleapis/tree/master/google/ads/googleads
+    # ad_group_criterion.negative = True
 
     # Optional repeated field
-    # final_url = ad_group_criterion.final_urls.add()
-    # final_url.value = 'https://www.example.com'
+    # ad_group_criterion.final_urls.append('https://www.example.com')
 
     # Add keyword
-    try:
-        ad_group_criterion_response = (
-            ad_group_criterion_service.mutate_ad_group_criteria(
-                customer_id, [ad_group_criterion_operation]))
-    except google.ads.google_ads.errors.GoogleAdsException as ex:
-        print('Request with ID "%s" failed with status "%s" and includes the '
-              'following errors:' % (ex.request_id, ex.error.code().name))
-        for error in ex.failure.errors:
-            print('\tError with message "%s".' % error.message)
-            if error.location:
-                for field_path_element in error.location.field_path_elements:
-                    print('\t\tOn field: %s' % field_path_element.field_name)
-        sys.exit(1)
+    ad_group_criterion_response = (
+        ad_group_criterion_service.mutate_ad_group_criteria(
+            customer_id=customer_id,
+            operations=[ad_group_criterion_operation],
+        )
+    )
 
-    print('Created keyword %s.'
-          % ad_group_criterion_response.results[0].resource_name)
+    print(
+        "Created keyword "
+        f"{ad_group_criterion_response.results[0].resource_name}."
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # GoogleAdsClient will read the google-ads.yaml configuration file in the
     # home directory if none is specified.
-    google_ads_client = (google.ads.google_ads.client.GoogleAdsClient
-                         .load_from_storage())
+    googleads_client = GoogleAdsClient.load_from_storage(version="v10")
 
     parser = argparse.ArgumentParser(
-        description=('Adds a keyword to the provided ad group, for the '
-                     'specified customer.'))
+        description=(
+            "Adds a keyword to the provided ad group, for the "
+            "specified customer."
+        )
+    )
     # The following argument(s) should be provided to run the example.
-    parser.add_argument('-c', '--customer_id', type=six.text_type,
-                        required=True, help='The Google Ads customer ID.')
-    parser.add_argument('-a', '--ad_group_id', type=six.text_type,
-                        required=True, help='The ad group ID.')
-    parser.add_argument('-k', '--keyword', type=six.text_type, required=False,
-                        default='mars cruise',
-                        help=('The keyword to be added to the ad group. Note '
-                              'that you will receive an error response if you '
-                              'attempt to create a duplicate keyword.'))
+    parser.add_argument(
+        "-c",
+        "--customer_id",
+        type=str,
+        required=True,
+        help="The Google Ads customer ID.",
+    )
+    parser.add_argument(
+        "-a", "--ad_group_id", type=str, required=True, help="The ad group ID."
+    )
+    parser.add_argument(
+        "-k",
+        "--keyword_text",
+        type=str,
+        required=False,
+        default="mars cruise",
+        help=(
+            "The keyword to be added to the ad group. Note "
+            "that you will receive an error response if you "
+            "attempt to create a duplicate keyword."
+        ),
+    )
     args = parser.parse_args()
 
-    main(google_ads_client, args.customer_id, args.ad_group_id, args.keyword)
+    try:
+        main(
+            googleads_client,
+            args.customer_id,
+            args.ad_group_id,
+            args.keyword_text,
+        )
+    except GoogleAdsException as ex:
+        print(
+            f'Request with ID "{ex.request_id}" failed with status '
+            f'"{ex.error.code().name}" and includes the following errors:'
+        )
+        for error in ex.failure.errors:
+            print(f'\tError with message "{error.message}".')
+            if error.location:
+                for field_path_element in error.location.field_path_elements:
+                    print(f"\t\tOn field: {field_path_element.field_name}")
+        sys.exit(1)

@@ -18,19 +18,18 @@ Keyword plans can be reused for retrieving forecast metrics and historic
 metrics.
 """
 
-from __future__ import absolute_import
 
 import argparse
-import six
 import sys
 import uuid
 
-from google.ads.google_ads.client import GoogleAdsClient
-from google.ads.google_ads.errors import GoogleAdsException
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
 
 
+# [START add_keyword_plan]
 def main(client, customer_id):
-    """Adds a keyword plan, campaign, ad group, etc. to the customer account
+    """Adds a keyword plan, campaign, ad group, etc. to the customer account.
 
     Also handles errors from the API and prints them.
 
@@ -38,21 +37,10 @@ def main(client, customer_id):
         client: An initialized instance of GoogleAdsClient
         customer_id: A str of the customer_id to use in requests.
     """
-    try:
-        add_keyword_plan(client, customer_id)
-    except GoogleAdsException as ex:
-        print('Request with ID "{}" failed with status "{}" and includes the '
-              'following errors:'.format(ex.request_id, ex.error.code().name))
-        for error in ex.failure.errors:
-            print('\tError with message "{}".'.format(error.message))
-            if error.location:
-                for field_path_element in error.location.field_path_elements:
-                    print('\t\tOn field: {}'.format(
-                        field_path_element.field_name))
-        sys.exit(1)
+    _add_keyword_plan(client, customer_id)
 
 
-def add_keyword_plan(client, customer_id):
+def _add_keyword_plan(client, customer_id):
     """Adds a keyword plan, campaign, ad group, etc. to the customer account.
 
     Args:
@@ -62,17 +50,22 @@ def add_keyword_plan(client, customer_id):
     Raises:
         GoogleAdsException: If an error is returned from the API.
     """
-    keyword_plan = create_keyword_plan(client, customer_id)
-    keyword_plan_campaign = create_keyword_plan_campaign(client, customer_id,
-                                                         keyword_plan)
-    keyword_plan_ad_group = create_keyword_plan_ad_group(client, customer_id,
-                                                         keyword_plan_campaign)
-    create_keyword_plan_keywords(client, customer_id, keyword_plan_ad_group)
-    create_keyword_plan_negative_keywords(client, customer_id,
-                                          keyword_plan_campaign)
+    keyword_plan = _create_keyword_plan(client, customer_id)
+    keyword_plan_campaign = _create_keyword_plan_campaign(
+        client, customer_id, keyword_plan
+    )
+    keyword_plan_ad_group = _create_keyword_plan_ad_group(
+        client, customer_id, keyword_plan_campaign
+    )
+    _create_keyword_plan_ad_group_keywords(
+        client, customer_id, keyword_plan_ad_group
+    )
+    _create_keyword_plan_negative_campaign_keywords(
+        client, customer_id, keyword_plan_campaign
+    )
 
 
-def create_keyword_plan(client, customer_id):
+def _create_keyword_plan(client, customer_id):
     """Adds a keyword plan to the given customer account.
 
     Args:
@@ -85,28 +78,28 @@ def create_keyword_plan(client, customer_id):
     Raises:
         GoogleAdsException: If an error is returned from the API.
     """
-    operation = client.get_type('KeywordPlanOperation', version='v2')
+    keyword_plan_service = client.get_service("KeywordPlanService")
+    operation = client.get_type("KeywordPlanOperation")
     keyword_plan = operation.create
 
-    keyword_plan.name.value = ('Keyword plan for traffic estimate {}'.format(
-        uuid.uuid4()))
+    keyword_plan.name = f"Keyword plan for traffic estimate {uuid.uuid4()}"
 
-    forecast_interval = client.get_type('KeywordPlanForecastIntervalEnum',
-                                        version='v2').NEXT_QUARTER
+    forecast_interval = (
+        client.enums.KeywordPlanForecastIntervalEnum.NEXT_QUARTER
+    )
     keyword_plan.forecast_period.date_interval = forecast_interval
 
-    keyword_plan_service = client.get_service('KeywordPlanService',
-                                              version='v2')
-    response = keyword_plan_service.mutate_keyword_plans(customer_id,
-                                                         [operation])
+    response = keyword_plan_service.mutate_keyword_plans(
+        customer_id=customer_id, operations=[operation]
+    )
     resource_name = response.results[0].resource_name
 
-    print('Created keyword plan with resource name: {}'.format(resource_name))
+    print(f"Created keyword plan with resource name: {resource_name}")
 
     return resource_name
 
 
-def create_keyword_plan_campaign(client, customer_id, keyword_plan):
+def _create_keyword_plan_campaign(client, customer_id, keyword_plan):
     """Adds a keyword plan campaign to the given keyword plan.
 
     Args:
@@ -121,44 +114,41 @@ def create_keyword_plan_campaign(client, customer_id, keyword_plan):
     Raises:
         GoogleAdsException: If an error is returned from the API.
     """
-    operation = client.get_type('KeywordPlanCampaignOperation', version='v2')
+    keyword_plan_campaign_service = client.get_service(
+        "KeywordPlanCampaignService"
+    )
+    operation = client.get_type("KeywordPlanCampaignOperation")
     keyword_plan_campaign = operation.create
 
-    keyword_plan_campaign.name.value = 'Keyword plan campaign {}'.format(
-        uuid.uuid4())
-    keyword_plan_campaign.cpc_bid_micros.value = 1000000
-    keyword_plan_campaign.keyword_plan.value = keyword_plan
+    keyword_plan_campaign.name = f"Keyword plan campaign {uuid.uuid4()}"
+    keyword_plan_campaign.cpc_bid_micros = 1000000
+    keyword_plan_campaign.keyword_plan = keyword_plan
 
-    keyword_plan_network = client.get_type('KeywordPlanNetworkEnum',
-                                           version='v2')
-    network = keyword_plan_network.GOOGLE_SEARCH
+    network = client.enums.KeywordPlanNetworkEnum.GOOGLE_SEARCH
     keyword_plan_campaign.keyword_plan_network = network
 
-    geo_target = client.get_type('KeywordPlanGeoTarget', version='v2')
+    geo_target = client.get_type("KeywordPlanGeoTarget")
     # Constant for U.S. Other geo target constants can be referenced here:
-    # https://developers.google.com/adwords/api/docs/appendix/geotargeting
-    geo_target.geo_target_constant.value = 'geoTargetConstants/2840'
-    keyword_plan_campaign.geo_targets.extend([geo_target])
+    # https://developers.google.com/google-ads/api/reference/data/geotargets
+    geo_target.geo_target_constant = "geoTargetConstants/2840"
+    keyword_plan_campaign.geo_targets.append(geo_target)
 
-    language = client.get_type('StringValue', version='v2')
     # Constant for English
-    language.value = 'languageConstants/1000'
-    keyword_plan_campaign.language_constants.extend([language])
+    language = "languageConstants/1000"
+    keyword_plan_campaign.language_constants.append(language)
 
-    keyword_plan_campaign_service = client.get_service(
-        'KeywordPlanCampaignService', version='v2')
     response = keyword_plan_campaign_service.mutate_keyword_plan_campaigns(
-        customer_id, [operation])
+        customer_id=customer_id, operations=[operation]
+    )
 
     resource_name = response.results[0].resource_name
 
-    print('Created keyword plan campaign with resource name: {}'.format(
-        resource_name))
+    print(f"Created keyword plan campaign with resource name: {resource_name}")
 
     return resource_name
 
 
-def create_keyword_plan_ad_group(client, customer_id, keyword_plan_campaign):
+def _create_keyword_plan_ad_group(client, customer_id, keyword_plan_campaign):
     """Adds a keyword plan ad group to the given keyword plan campaign.
 
     Args:
@@ -173,118 +163,152 @@ def create_keyword_plan_ad_group(client, customer_id, keyword_plan_campaign):
     Raises:
         GoogleAdsException: If an error is returned from the API.
     """
-    operation = client.get_type('KeywordPlanAdGroupOperation', version='v2')
+    operation = client.get_type("KeywordPlanAdGroupOperation")
     keyword_plan_ad_group = operation.create
 
-    keyword_plan_ad_group.name.value = 'Keyword plan ad group {}'.format(
-        uuid.uuid4())
-    keyword_plan_ad_group.cpc_bid_micros.value = 2500000
-    keyword_plan_ad_group.keyword_plan_campaign.value = keyword_plan_campaign
+    keyword_plan_ad_group.name = f"Keyword plan ad group {uuid.uuid4()}"
+    keyword_plan_ad_group.cpc_bid_micros = 2500000
+    keyword_plan_ad_group.keyword_plan_campaign = keyword_plan_campaign
 
     keyword_plan_ad_group_service = client.get_service(
-        'KeywordPlanAdGroupService', version='v2')
+        "KeywordPlanAdGroupService"
+    )
     response = keyword_plan_ad_group_service.mutate_keyword_plan_ad_groups(
-        customer_id, [operation])
+        customer_id=customer_id, operations=[operation]
+    )
 
     resource_name = response.results[0].resource_name
 
-    print('Created keyword plan ad group with resource name: {}'.format(
-        resource_name))
+    print(f"Created keyword plan ad group with resource name: {resource_name}")
 
     return resource_name
 
 
-def create_keyword_plan_keywords(client, customer_id, plan_ad_group):
-    """Adds keyword plan keywords to the given keyword plan ad group.
+def _create_keyword_plan_ad_group_keywords(client, customer_id, plan_ad_group):
+    """Adds keyword plan ad group keywords to the given keyword plan ad group.
 
     Args:
         client: An initialized instance of GoogleAdsClient
         customer_id: A str of the customer_id to use in requests.
-        keyword_plan_ad_group: A str of the keyword plan ad group resource_name
+        plan_ad_group: A str of the keyword plan ad group resource_name
             these keyword plan keywords should be attributed to.
 
     Raises:
         GoogleAdsException: If an error is returned from the API.
     """
-    match_types = client.get_type('KeywordMatchTypeEnum', version='v2')
-
-    keyword_plan_keyword1 = client.get_type('KeywordPlanKeyword', version='v2')
-    keyword_plan_keyword1.text.value = 'mars cruise'
-    keyword_plan_keyword1.cpc_bid_micros.value = 2000000
-    keyword_plan_keyword1.match_type = match_types.BROAD
-    keyword_plan_keyword1.keyword_plan_ad_group.value = plan_ad_group
-
-    keyword_plan_keyword2 = client.get_type('KeywordPlanKeyword', version='v2')
-    keyword_plan_keyword2.text.value = 'cheap cruise'
-    keyword_plan_keyword2.cpc_bid_micros.value = 1500000
-    keyword_plan_keyword2.match_type = match_types.PHRASE
-    keyword_plan_keyword2.keyword_plan_ad_group.value = plan_ad_group
-
-    keyword_plan_keyword3 = client.get_type('KeywordPlanKeyword', version='v2')
-    keyword_plan_keyword3.text.value = 'jupiter cruise'
-    keyword_plan_keyword3.cpc_bid_micros.value = 1990000
-    keyword_plan_keyword3.match_type = match_types.EXACT
-    keyword_plan_keyword3.keyword_plan_ad_group.value = plan_ad_group
-
+    keyword_plan_ad_group_keyword_service = client.get_service(
+        "KeywordPlanAdGroupKeywordService"
+    )
+    operation = client.get_type("KeywordPlanAdGroupKeywordOperation")
     operations = []
-    for keyword in [keyword_plan_keyword1,
-                    keyword_plan_keyword2,
-                    keyword_plan_keyword3]:
-        operation = client.get_type('KeywordPlanKeywordOperation', version='v2')
-        operation.create.CopyFrom(keyword)
-        operations.append(operation)
 
-    keyword_plan_keyword_service = client.get_service(
-        'KeywordPlanKeywordService', version='v2')
-    response = keyword_plan_keyword_service.mutate_keyword_plan_keywords(
-        customer_id, operations)
+    operation = client.get_type("KeywordPlanAdGroupKeywordOperation")
+    keyword_plan_ad_group_keyword1 = operation.create
+    keyword_plan_ad_group_keyword1.text = "mars cruise"
+    keyword_plan_ad_group_keyword1.cpc_bid_micros = 2000000
+    keyword_plan_ad_group_keyword1.match_type = (
+        client.enums.KeywordMatchTypeEnum.BROAD
+    )
+    keyword_plan_ad_group_keyword1.keyword_plan_ad_group = plan_ad_group
+    operations.append(operation)
+
+    operation = client.get_type("KeywordPlanAdGroupKeywordOperation")
+    keyword_plan_ad_group_keyword2 = operation.create
+    keyword_plan_ad_group_keyword2.text = "cheap cruise"
+    keyword_plan_ad_group_keyword2.cpc_bid_micros = 1500000
+    keyword_plan_ad_group_keyword2.match_type = (
+        client.enums.KeywordMatchTypeEnum.PHRASE
+    )
+    keyword_plan_ad_group_keyword2.keyword_plan_ad_group = plan_ad_group
+    operations.append(operation)
+
+    operation = client.get_type("KeywordPlanAdGroupKeywordOperation")
+    keyword_plan_ad_group_keyword3 = operation.create
+    keyword_plan_ad_group_keyword3.text = "jupiter cruise"
+    keyword_plan_ad_group_keyword3.cpc_bid_micros = 1990000
+    keyword_plan_ad_group_keyword3.match_type = (
+        client.enums.KeywordMatchTypeEnum.EXACT
+    )
+    keyword_plan_ad_group_keyword3.keyword_plan_ad_group = plan_ad_group
+    operations.append(operation)
+
+    response = keyword_plan_ad_group_keyword_service.mutate_keyword_plan_ad_group_keywords(
+        customer_id=customer_id, operations=operations
+    )
 
     for result in response.results:
-        print('Created keyword plan keyword with resource name: {}'.format(
-            result.resource_name))
+        print(
+            "Created keyword plan ad group keyword with resource name: "
+            f"{result.resource_name}"
+        )
 
 
-def create_keyword_plan_negative_keywords(client, customer_id, plan_campaign):
-    """Adds a keyword plan negative keyword to the given keyword plan campaign.
+def _create_keyword_plan_negative_campaign_keywords(
+    client, customer_id, plan_campaign
+):
+    """Adds a keyword plan negative campaign keyword to the given campaign.
 
     Args:
         client: An initialized instance of GoogleAdsClient
         customer_id: A str of the customer_id to use in requests.
-        keyword_plan_campaign: A str of the keyword plan campaign resource_name
+        plan_campaign: A str of the keyword plan campaign resource_name
             this keyword plan negative keyword should be attributed to.
 
     Raises:
         GoogleAdsException: If an error is returned from the API.
     """
-    match_types = client.get_type('KeywordMatchTypeEnum', version='v2')
-    operation = client.get_type('KeywordPlanNegativeKeywordOperation',
-                                version='v2')
-    keyword_plan_negative_keyword = operation.create
-
-    keyword_plan_negative_keyword.text.value = 'moon walk'
-    keyword_plan_negative_keyword.match_type = match_types.BROAD
-    keyword_plan_negative_keyword.keyword_plan_campaign.value = plan_campaign
-
     keyword_plan_negative_keyword_service = client.get_service(
-        'KeywordPlanNegativeKeywordService', version='v2')
-    response = (keyword_plan_negative_keyword_service
-                    .mutate_keyword_plan_negative_keywords(
-                        customer_id, [operation]))
+        "KeywordPlanCampaignKeywordService"
+    )
+    operation = client.get_type("KeywordPlanCampaignKeywordOperation")
 
-    print('Created keyword plan negative keyword with resource name: {}'.format(
-        response.results[0].resource_name))
+    keyword_plan_campaign_keyword = operation.create
+    keyword_plan_campaign_keyword.text = "moon walk"
+    keyword_plan_campaign_keyword.match_type = (
+        client.enums.KeywordMatchTypeEnum.BROAD
+    )
+    keyword_plan_campaign_keyword.keyword_plan_campaign = plan_campaign
+    keyword_plan_campaign_keyword.negative = True
+
+    response = keyword_plan_negative_keyword_service.mutate_keyword_plan_campaign_keywords(
+        customer_id=customer_id, operations=[operation]
+    )
+
+    print(
+        "Created keyword plan campaign keyword with resource name: "
+        f"{response.results[0].resource_name}"
+    )
+    # [END add_keyword_plan]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # GoogleAdsClient will read the google-ads.yaml configuration file in the
     # home directory if none is specified.
-    google_ads_client = GoogleAdsClient.load_from_storage()
+    googleads_client = GoogleAdsClient.load_from_storage(version="v10")
 
     parser = argparse.ArgumentParser(
-        description='Creates a keyword plan for specified customer.')
+        description="Creates a keyword plan for specified customer."
+    )
     # The following argument(s) should be provided to run the example.
-    parser.add_argument('-c', '--customer_id', type=six.text_type,
-                        required=True, help='The Google Ads customer ID.')
+    parser.add_argument(
+        "-c",
+        "--customer_id",
+        type=str,
+        required=True,
+        help="The Google Ads customer ID.",
+    )
     args = parser.parse_args()
 
-    main(google_ads_client, args.customer_id)
+    try:
+        main(googleads_client, args.customer_id)
+    except GoogleAdsException as ex:
+        print(
+            f'Request with ID "{ex.request_id}" failed with status '
+            f'"{ex.error.code().name}" and includes the following errors:'
+        )
+        for error in ex.failure.errors:
+            print(f'\tError with message "{error.message}".')
+            if error.location:
+                for field_path_element in error.location.field_path_elements:
+                    print(f"\t\tOn field: {field_path_element.field_name}")
+        sys.exit(1)

@@ -1,3 +1,151 @@
+* 17.0.0
+- Google Ads API v11_0 release.
+- Added example create_experiment.
+- Added example detect_and_apply_recommendations
+- Updated example add_smart_campaign
+
+* 16.0.0
+- Add support for fog Google Ads API v10_1.
+- Remove support for Google Ads API v8.
+- Replace authentication examples with one file generate_user_credentials.py.
+
+* 15.1.1
+- Bump protobuf dependency to 3.20.0 excluding 3.18.* and 3.19.*.
+- Remove duplicate google-api-core dependency.
+
+* 15.1.0
+- Fix issue preventing streaming responses from being logged.
+- Expose logging utilities for external interceptor logic.
+- Various example updates and improvements.
+
+* 15.0.0
+- Google Ads API v10_0 release.
+- Remove all "get" methods from services.
+- Remove services that only contained "get" methods.
+- Remove support got Google Ads API v7_0.
+
+* 14.1.0
+- Google Ads API v9_0 release
+- Update gRPC transport logic to replace "gapic" user-agent with "gccl"
+- Update examples to support v9 changes
+- Add new Performance Max examples
+  advanced_operations/add_performance_max_campaign.py and
+  shopping_ads/add_performance_max_retail_campaign.py
+
+* 14.0.1
+- Pin protobuf to < 3.18.0
+- Add examples add_bidding_data_exclusion, add_bidding_seasonality_adjustment
+- Style updates for examples that use search_stream
+- Fix hardcoded URLs for media in various examples
+
+* 14.0.0
+- New required configuration value to specify protobuf message types, see:
+  https://developers.google.com/google-ads/api/docs/client-libs/python/protobuf-messages
+- Google Ads API v8_1 release.
+- Remove support for Google Ads API v6.
+
+* 13.0.0
+- Bump the minimum Python version requirement to 3.7+
+- Fix package name in base transport files
+- Update examples to new "client.enums" syntax
+- Move CSV reporting example to migration directory
+- Various minor updates to examples and documentation.
+
+* 12.0.0
+- Google Ads API v8_0 release.
+- Deprecate Google Ads API v5_0.
+- *NOTE* This will be the last release to support Python 3.6.
+
+* 11.0.2
+- Update dataclasses dependency so it's only installed when using Python < 3.7
+
+* 11.0.1
+- Fix bug breaking Python 3.6 compatibility.
+- Update unit test framework to Nox and add test coverage.
+- Various updates to examples and GitHub issue templates.
+
+* 11.0.0
+- Google Ads API v7_0 release.
+- Deprecate Google Ads API v4_0.
+- Add http proxy support.
+
+* 10.0.0
+- Revamp of protobuf message interface to improve usability. See:
+https://developers.google.com/google-ads/api/docs/client-libs/python/library-version-10
+- Remove ResourceName utility
+- Add ability to specify API version at client level, which overrides setting
+  at service or type level.
+- GoogleAdsClient.get_type is now an instance, not class, level method
+- Add copy_from helper method to GoogleAdsClient.
+- Add "enums" attribute to GoogleAdsClient for easier Enum accessing.
+- Various updates to all examples
+
+* 9.0.0
+- Google Ads v6_1 release
+- Deprecate v3_0
+- Add log masking for CustomerUserAccessInvitation.email_address field.
+- Update examples to reflect changes to resource name helper methods.
+
+* 8.2.0
+- Added new client configuration environment variables.
+- Added ability to configure YAML file location via environment variable.
+- Added support for linked-customer-id header.
+
+* 8.1.0
+- Added support for Python 3.6 via PEP562 (Thanks @infectious!)
+
+* 8.0.0
+- Google Ads v6_0 release
+- Deprecate v2_0
+- Update all examples to support migration from wrapper types to primitives.
+- Add masking logic to prevent PII in requests/responses from being logged.
+
+* 7.0.0
+- Google Ads v5_0 release
+- Updates to examples to support addition of field presence on certain
+  resources, changing from accessing wrapper types to accessing primitives.
+
+* 6.0.0
+- Google Ads v4_0 release
+- Deprecate v1_0
+- Updates to various examples to standardize param names and make
+  changes to support v4.
+
+* 5.1.0
+- Google Ads v3_1 release
+- Add add_campaign_labels example
+- Fixed issues in services/enum.py in v2 and v3
+
+* 5.0.4
+- Enable logging interceptor to retrieve customer ID from resource_name.
+- Fix bugs in services/enums.py files in v2 and v3.
+
+* 5.0.3
+- Fix bug in generated init files preventing import *.
+
+* 5.0.2
+- Remove response error caching in streaming interceptors.
+
+* 5.0.1
+- Defer loading of error_pb2 until failed response is encountered.
+
+* 5.0.0
+- Google Ads v3_0 release
+
+* 4.1.1:
+- Fix for types.py to include classes of dependent modules
+
+* 4.1.0:
+- Performance improvements
+- Updated dependencies for more recent versions
+- Bumped Python version to 3.7+
+
+* 4.0.0:
+- Removing support for Python 2
+
+* 3.3.0:
+- Google ads v2_2 release
+
 * 3.2.0:
 - Google ads v2_1 release
 - Fix formatting typo in README
